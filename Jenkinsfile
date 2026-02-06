@@ -1,59 +1,81 @@
 pipeline {
-    agent any
-
-    tools {
-        nodejs 'NodeJS'
-    }
-
-    environment {
-        CI = 'true'
-    }
+    agent none
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-                echo 'Code source récupéré'
-            }
-        }
-
-        stage('Install') {
+        stage('Build') {
+            agent { docker {
+                image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                args '--network=host'
+            } }
             steps {
                 sh 'npm install'
-                echo 'Dépendances installées'
-            }
-        }
-
-        stage('Build') {
-            steps {
                 sh 'npm run build'
-                echo 'Application compilée'
             }
         }
 
-        stage('Test Unitaires') {
+        stage('Tests Unitaires') {
+            agent { docker {
+                image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                args '--network=host'
+            } }
             steps {
+                sh 'npm install'
                 sh 'npm run test:run'
-                echo 'Tests unitaires passés'
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: false,
+                        icon: '', keepAll: true,
+                        reportDir: 'html',
+                        reportFiles: 'index.html',
+                        reportName: 'VitestReport',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
             }
         }
 
-        stage('Test E2E') {
+        stage('Tests E2E') {
+            agent { docker {
+                image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                args '--network=host'
+            } }
             steps {
-                sh 'npx playwright install --with-deps chromium'
+                sh 'npm install'
                 sh 'npm run test:e2e'
-                echo 'Tests E2E passés'
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: false,
+                        icon: '', keepAll: true,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'PlaywrightReport',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
             }
         }
 
-        stage('Deploy') {
-            when {
-                branch 'main'
+        stage('Deploy Netlify') {
+            agent { docker {
+                image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+                args '--network=host'
+            } }
+            when { branch 'main' }
+            environment {
+                NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
             }
             steps {
-                echo 'Déploiement en production...'
-                sh 'cp -r dist/* /var/www/html/ || echo "Simulation du déploiement"'
-                echo 'Application déployée avec succès'
+                sh 'npm install'
+                sh 'npm run build'
+                sh 'node_modules/netlify-cli/bin/run.js deploy --prod --dir=dist'
             }
         }
     }
