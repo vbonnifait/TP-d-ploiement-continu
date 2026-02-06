@@ -1,15 +1,14 @@
 pipeline {
     agent none
 
-    stage('Build') {
+    stages {
+        stage('Build') {
             agent { docker {
                 image 'mcr.microsoft.com/playwright:v1.58.0-noble'
                 args '--network=host'
             } }
             steps {
-                // Ajoute cette ligne pour nettoyer le workspace avant de commencer
-                cleanWs() 
-                
+                cleanWs()
                 sh 'npm install'
                 sh 'npm run build'
             }
