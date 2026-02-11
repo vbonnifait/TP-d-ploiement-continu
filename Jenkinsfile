@@ -52,6 +52,23 @@ pipeline {
                 sh 'node node_modules/netlify-cli/bin/run.js deploy --prod --dir=dist --site capable-malabi-fd9695.netlify.app'
             }
         }
+        stage('Docker Build & Push') {
+            when {
+                branch 'main'
+            }
+            agent any
+            environment {
+                CI_REGISTRY = 'ghcr.io'
+                CI_REGISTRY_USER = 'vbonnifait'
+                CI_REGISTRY_IMAGE = "${CI_REGISTRY}/${CI_REGISTRY_USER}/chess"
+                CI_REGISTRY_PASSWORD = credentials('CI_REGISTRY_PASSWORD')
+            }
+            steps {
+                sh 'docker build -t $CI_REGISTRY_IMAGE .'
+                sh 'docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY'
+                sh 'docker push $CI_REGISTRY_IMAGE'
+            }
+        }
     }
     post {
         always {
