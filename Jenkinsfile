@@ -41,7 +41,7 @@ pipeline {
         stage('Deploy to Netlify') {
             agent {
                 docker { 
-                    image 'node:lts-alpine'
+                    image 'node:lts'
                     args '--network=host'
                     reuseNode true
                 }
