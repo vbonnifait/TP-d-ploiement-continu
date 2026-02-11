@@ -113,18 +113,24 @@ describe('GameService', () => {
     })
 
     it('devrait capturer une pièce sur la case de destination', () => {
-      // Déplacer le pion blanc e2 vers e7 (où se trouve un pion noir)
-      const blackPawn = gameService.getPieceAt('e-7')
-      const success = gameService.movePiece('e-2', 'e-7')
+      // Séquence valide pour une capture : e2-e4, d7-d5, e4xd5
+      gameService.movePiece('e-2', 'e-4')
+      gameService.movePiece('d-7', 'd-5')
+
+      // Le pion blanc en e4 capture le pion noir en d5
+      const success = gameService.movePiece('e-4', 'd-5')
 
       expect(success).toBe(true)
-      expect(gameService.getPieceAt('e-7').color).toBe(PieceColor.WHITE)
-      expect(gameService.getPieceAt('e-2')).toBeNull()
+      // La case d5 contient maintenant une pièce blanche
+      expect(gameService.getPieceAt('d-5').color).toBe(PieceColor.WHITE)
+      // La case e4 est vide
+      expect(gameService.getPieceAt('e-4')).toBeNull()
 
       // Vérifier que la capture est enregistrée dans l'historique
       const lastMove = gameService.getLastMove()
       expect(lastMove.capturedPiece).not.toBeNull()
-      expect(lastMove.capturedPiece.id).toBe(blackPawn.id)
+      expect(lastMove.capturedPiece.type).toBe(PieceType.PAWN)
+      expect(lastMove.capturedPiece.color).toBe(PieceColor.BLACK)
     })
 
     it('devrait retourner false si la case de départ est vide', () => {
