@@ -1,14 +1,32 @@
 pipeline {
-    agent any
+    agent none
     stages {
-        stage('step1') {
+        stage('Build') {
+            agent { docker { 
+              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              args '--network=host'
+            } }
             steps {
-                sh 'echo étape un'
+                sh 'npm install'
+                sh 'npm run build'
             }
         }
-        stage('step2') {
+        stage('Tests Unitaires') {
+             agent { docker { 
+              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              args '--network=host'
+            } }
             steps {
-                sh 'echo étape deux'
+                sh 'npm run test'
+            }
+        }
+        stage('Tests E2E') {
+             agent { docker { 
+              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              args '--network=host'
+            } }
+            steps {
+                sh 'npm run test:e2e'
             }
         }
     }
