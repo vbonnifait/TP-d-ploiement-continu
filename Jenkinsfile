@@ -35,6 +35,13 @@ pipeline {
                 sh 'npm run test:e2e'
             }
         }
+        stage('Deploy') {
+            steps {
+                withCredentials([string(credentialsId: 'netlify-token', variable: 'NETLIFY_AUTH_TOKEN')]) {
+                    sh 'node node_modules/netlify-cli/bin/run.js deploy --prod --dir=dist --site capable-malabi-fd9695.netlify.app'
+                }
+            }
+        }
     }
     post {
         always {
