@@ -175,18 +175,25 @@ test.describe('ChessBoard', () => {
     })
 
     test('devrait pouvoir capturer une pièce adverse', async ({ page }) => {
-      // D'abord, déplacer le pion blanc e2 vers e7 pour capturer le pion noir
+      // Séquence légale : 1. e2→e4, puis noir d7→d5, puis blanc e4×d5 (capture)
+      // Mouvement 1 : pion blanc e2 → e4
       const e2Square = page.locator('.board-row').nth(6).locator('.square').nth(4)
-      const whitePawn = e2Square.locator('.chess-piece')
-      const e7Square = page.locator('.board-row').nth(1).locator('.square').nth(4)
+      const e4Square = page.locator('.board-row').nth(4).locator('.square').nth(4)
+      await e2Square.locator('.chess-piece').dragTo(e4Square)
 
-      // Vérifier qu'il y a un pion noir en e7
-      await expect(e7Square.locator('.chess-piece.black')).toBeVisible()
+      // Mouvement 2 : pion noir d7 → d5
+      const d7Square = page.locator('.board-row').nth(1).locator('.square').nth(3)
+      const d5Square = page.locator('.board-row').nth(3).locator('.square').nth(3)
+      await d7Square.locator('.chess-piece').dragTo(d5Square)
 
-      await whitePawn.dragTo(e7Square)
+      // Vérifier qu'il y a un pion noir en d5
+      await expect(d5Square.locator('.chess-piece.black')).toBeVisible()
 
-      // Vérifier que c'est maintenant un pion blanc en e7
-      await expect(e7Square.locator('.chess-piece.white')).toBeVisible()
+      // Mouvement 3 : pion blanc e4 capture d5
+      await e4Square.locator('.chess-piece').dragTo(d5Square)
+
+      // Vérifier que c'est maintenant un pion blanc en d5
+      await expect(d5Square.locator('.chess-piece.white')).toBeVisible()
 
       // Vérifier que la capture est mentionnée dans l'historique
       const moveEntry = page.locator('.move-entry').first()
@@ -223,12 +230,17 @@ test.describe('ChessBoard', () => {
     })
 
     test('devrait restaurer toutes les 32 pièces après réinitialisation', async ({ page }) => {
-      // Faire plusieurs mouvements avec capture
+      // Séquence légale avec capture : e2→e4, d7→d5, e4×d5
       const e2Square = page.locator('.board-row').nth(6).locator('.square').nth(4)
-      const whitePawn = e2Square.locator('.chess-piece')
-      const e7Square = page.locator('.board-row').nth(1).locator('.square').nth(4)
+      const e4Square = page.locator('.board-row').nth(4).locator('.square').nth(4)
+      await e2Square.locator('.chess-piece').dragTo(e4Square)
 
-      await whitePawn.dragTo(e7Square)
+      const d7Square = page.locator('.board-row').nth(1).locator('.square').nth(3)
+      const d5Square = page.locator('.board-row').nth(3).locator('.square').nth(3)
+      await d7Square.locator('.chess-piece').dragTo(d5Square)
+
+      // Capture : e4×d5
+      await e4Square.locator('.chess-piece').dragTo(d5Square)
 
       // Maintenant il y a 31 pièces
       await expect(page.locator('.chess-piece')).toHaveCount(31)
