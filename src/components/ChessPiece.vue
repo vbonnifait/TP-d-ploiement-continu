@@ -1,7 +1,7 @@
 <template>
   <div
     class="chess-piece"
-    :class="[piece.color, { dragging: isDragging }]"
+    :class="[colorClass, { dragging: isDragging }]"
     draggable="true"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
@@ -51,6 +51,10 @@ const pieceSymbols = {
 
 const pieceSymbol = computed(() => {
   return pieceSymbols[props.piece.color][props.piece.type]
+})
+
+const colorClass = computed(() => {
+  return props.piece.color === PieceColor.WHITE ? 'white' : 'black'
 })
 
 function onDragStart(event) {

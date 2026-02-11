@@ -1,22 +1,25 @@
 /**
  * Service de gestion du jeu d'échecs
  * Gère les positions des pièces et l'historique des déplacements
+ * Utilise chess.js pour la logique du jeu
  */
 
-// Types de pièces
+import { Chess } from 'chess.js'
+
+// Types de pièces (mapping avec chess.js)
 export const PieceType = {
-  KING: 'king',
-  QUEEN: 'queen',
-  ROOK: 'rook',
-  BISHOP: 'bishop',
-  KNIGHT: 'knight',
-  PAWN: 'pawn'
+  KING: 'k',
+  QUEEN: 'q',
+  ROOK: 'r',
+  BISHOP: 'b',
+  KNIGHT: 'n',
+  PAWN: 'p'
 }
 
-// Couleurs des pièces
+// Couleurs des pièces (mapping avec chess.js)
 export const PieceColor = {
-  WHITE: 'white',
-  BLACK: 'black'
+  WHITE: 'w',
+  BLACK: 'b'
 }
 
 /**
@@ -34,11 +37,12 @@ export class ChessPiece {
  * Représente un mouvement
  */
 export class Move {
-  constructor(piece, fromPosition, toPosition, capturedPiece = null) {
+  constructor(piece, fromPosition, toPosition, capturedPiece = null, san = '') {
     this.piece = piece
     this.fromPosition = fromPosition
     this.toPosition = toPosition
     this.capturedPiece = capturedPiece
+    this.san = san // Standard Algebraic Notation
     this.timestamp = new Date()
   }
 }
@@ -48,44 +52,49 @@ export class Move {
  */
 class GameService {
   constructor() {
+    this.chess = new Chess()
     // Plateau: objet avec clé "col-row" (ex: "a-1") et valeur ChessPiece ou null
     this.board = {}
-    // Historique des mouvements
+    // Historique des mouvements (notre format interne)
     this.moveHistory = []
+
     // Initialiser le plateau
     this.initializeBoard()
   }
 
   /**
-   * Initialise le plateau avec toutes les pièces dans leur position de départ
+   * Initialise le plateau avec chess.js
    */
   initializeBoard() {
     this.board = {}
     this.moveHistory = []
+    this.syncBoardFromChess()
+  }
 
+  /**
+   * Synchronise l'état interne 'board' à partir de l'état de chess.js
+   */
+  syncBoardFromChess() {
+    // Vider le plateau actuel
+    Object.keys(this.board).forEach(key => delete this.board[key])
+
+    const chessBoard = this.chess.board() // Retourne un tableau 8x8
     const columns = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-    let pieceId = 0
 
-    // Placement des pièces blanches (rangées 1 et 2)
-    // Rangée 1: pièces majeures
-    const backRowPieces = [
-      PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP, PieceType.QUEEN,
-      PieceType.KING, PieceType.BISHOP, PieceType.KNIGHT, PieceType.ROOK
-    ]
+    // Parcourir le tableau de chess.js (rangée 0 = rangée 8 sur l'échiquier)
+    chessBoard.forEach((row, rowIndex) => {
+      const rowLabel = 8 - rowIndex // 0 -> 8, 1 -> 7, ...
 
-    columns.forEach((col, index) => {
-      // Pièces blanches - rangée 1
-      this.board[`${col}-1`] = new ChessPiece(backRowPieces[index], PieceColor.WHITE, pieceId++)
-      // Pions blancs - rangée 2
-      this.board[`${col}-2`] = new ChessPiece(PieceType.PAWN, PieceColor.WHITE, pieceId++)
-    })
-
-    // Placement des pièces noires (rangées 7 et 8)
-    columns.forEach((col, index) => {
-      // Pions noirs - rangée 7
-      this.board[`${col}-7`] = new ChessPiece(PieceType.PAWN, PieceColor.BLACK, pieceId++)
-      // Pièces noires - rangée 8
-      this.board[`${col}-8`] = new ChessPiece(backRowPieces[index], PieceColor.BLACK, pieceId++)
+      row.forEach((square, colIndex) => {
+        if (square) {
+          const colLabel = columns[colIndex]
+          const position = `${colLabel}-${rowLabel}`
+          // Créer une pièce avec un ID unique basé sur la position et le type (pour l'affichage Vue)
+          // Note: chess.js ne garde pas d'ID persistent pour les pièces, on en génère un simple
+          const id = `${square.color}-${square.type}-${colIndex}-${rowIndex}`
+          this.board[position] = new ChessPiece(square.type, square.color, id)
+        }
+      })
     })
   }
 
@@ -100,18 +109,72 @@ class GameService {
 
   /**
    * Obtient toutes les positions avec leurs pièces
-   * @returns {Object} Objet avec les positions comme clés et les pièces comme valeurs
    */
   getAllPieces() {
-    const pieces = {}
-    Object.keys(this.board).forEach(position => {
-      if (this.board[position]) {
-        pieces[position] = this.board[position]
-      }
-    })
-    return pieces
+    return { ...this.board }
   }
 
+  /**
+   * Déplace une pièce d'une position à une autre en utilisant chess.js
+   * @param {string} fromPosition - Position de départ (ex: "e-2")
+   * @param {string} toPosition - Position d'arrivée (ex: "e-4")
+   * @returns {boolean} true si le déplacement a réussi
+   */
+  movePiece(fromPosition, toPosition) {
+    const from = fromPosition.replace('-', '')
+    const to = toPosition.replace('-', '')
+
+    try {
+      // Tenter le mouvement avec chess.js
+      // move() retourne null si le mouvement est invalide
+      // On gère la promotion automatique en Dame pour simplifier
+      const moveResult = this.chess.move({ from, to, promotion: 'q' })
+
+      if (!moveResult) {
+        console.warn(`Mouvement invalide: ${from} -> ${to}`)
+        return false
+      }
+
+      // If the move is valid
+      const piece = new ChessPiece(moveResult.piece, moveResult.color, `${moveResult.color}-${moveResult.piece}-${Date.now()}`)
+
+      // Handle capture
+      let capturedPiece = null
+      if (moveResult.captured) {
+        // We cannot easily retrieve the exact captured piece object from the previous state without storing it
+        // But we can create a representation
+        const capturedColor = moveResult.color === 'w' ? 'b' : 'w'
+        capturedPiece = new ChessPiece(moveResult.captured, capturedColor, 'captured')
+      }
+
+      // Record the move in our history
+      const moveValues = new Move(piece, fromPosition, toPosition, capturedPiece, moveResult.san)
+      this.moveHistory.push(moveValues)
+
+      // Synchronize the board
+      this.syncBoardFromChess()
+
+      return true
+    } catch (e) {
+      // console.warn("Mouvement invalide ou erreur:", e.message)
+      return false
+    }
+  }
+
+  /**
+   * Obtient l'historique complet des mouvements
+   */
+  getMoveHistory() {
+    return [...this.moveHistory]
+  }
+
+  /**
+   * Réinitialise le jeu
+   */
+  reset() {
+    this.chess.reset()
+    this.initializeBoard()
+  }
   /**
    * Obtient la position d'une pièce par son ID
    * @param {number} pieceId - ID de la pièce
@@ -124,42 +187,6 @@ class GameService {
       }
     }
     return null
-  }
-
-  /**
-   * Déplace une pièce d'une position à une autre
-   * @param {string} fromPosition - Position de départ
-   * @param {string} toPosition - Position d'arrivée
-   * @returns {boolean} true si le déplacement a réussi
-   */
-  movePiece(fromPosition, toPosition) {
-    const piece = this.board[fromPosition]
-
-    if (!piece) {
-      console.warn(`Aucune pièce à la position ${fromPosition}`)
-      return false
-    }
-
-    // Vérifier si une pièce est capturée
-    const capturedPiece = this.board[toPosition] || null
-
-    // Créer l'enregistrement du mouvement
-    const move = new Move(piece, fromPosition, toPosition, capturedPiece)
-    this.moveHistory.push(move)
-
-    // Effectuer le déplacement
-    this.board[toPosition] = piece
-    this.board[fromPosition] = null
-
-    return true
-  }
-
-  /**
-   * Obtient l'historique complet des mouvements
-   * @returns {Move[]}
-   */
-  getMoveHistory() {
-    return [...this.moveHistory]
   }
 
   /**
@@ -178,13 +205,6 @@ class GameService {
    */
   getMoveCount() {
     return this.moveHistory.length
-  }
-
-  /**
-   * Réinitialise le jeu
-   */
-  reset() {
-    this.initializeBoard()
   }
 
   /**
