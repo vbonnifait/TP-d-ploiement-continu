@@ -56,7 +56,7 @@
           class="move-entry"
         >
           <span class="move-number">{{ moveHistory.length - index }}.</span>
-          <span class="piece-symbol" :class="move.piece.color">
+          <span class="piece-symbol" :class="getPieceColorClass(move.piece)">
             {{ getPieceSymbol(move.piece) }}
           </span>
           <span class="move-notation">
@@ -124,6 +124,11 @@ function getPieceSymbol(piece) {
 
 function formatPosition(position) {
   return position.replace('-', '')
+}
+
+// Déterminer la classe CSS couleur d'une pièce
+function getPieceColorClass(piece) {
+  return piece.color === PieceColor.WHITE ? 'white' : 'black'
 }
 
 // Déterminer la couleur d'une case
