@@ -1,11 +1,12 @@
 pipeline {
-    agent none
+    agent any
     stages {
         stage('Build') {
             agent {
                 docker { 
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host' 
+                    args '--network=host'
+                    reuseNode true
                 }
             }
             steps {
@@ -17,7 +18,8 @@ pipeline {
             agent {
                 docker { 
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host' 
+                    args '--network=host'
+                    reuseNode true
                 }
             }
             steps {
@@ -28,7 +30,8 @@ pipeline {
             agent {
                 docker { 
                     image 'mcr.microsoft.com/playwright:v1.57.0-noble'
-                    args '--network=host' 
+                    args '--network=host'
+                    reuseNode true
                 }
             }
             steps {
@@ -39,13 +42,14 @@ pipeline {
             agent {
                 docker { 
                     image 'node:lts-alpine'
-                    args '--network=host' 
+                    args '--network=host'
+                    reuseNode true
                 }
             }
             when { branch 'main' }
             environment {
                 NETLIFY_AUTH_TOKEN = credentials('NETLIFY_TOKEN')
-                NETLIFY_SITE_NAME = 'chesstpdeploiementcontinu.netlify.app' 
+                NETLIFY_SITE_NAME = 'chesstpdeploiementcontinu.netlify.app'
             }
             steps {
                 sh 'npm install netlify-cli --save-dev'
