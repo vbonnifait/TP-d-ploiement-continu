@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Build') {
             agent { docker { 
-              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              image 'mcr.microsoft.com/playwright:v1.58.0-noble'
               args '--network=host'
             } }
             steps {
@@ -13,7 +13,7 @@ pipeline {
         }
         stage('Tests Unitaires') {
              agent { docker { 
-              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              image 'mcr.microsoft.com/playwright:v1.58.0-noble'
               args '--network=host'
             } }
             steps {
@@ -22,7 +22,7 @@ pipeline {
         }
         stage('Tests E2E') {
              agent { docker { 
-              image 'mcr.microsoft.com/playwright:v1.57.0-noble'
+              image 'mcr.microsoft.com/playwright:v1.58.0-noble'
               args '--network=host'
             } }
             steps {
