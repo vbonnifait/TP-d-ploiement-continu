@@ -53,7 +53,7 @@ pipeline {
             }
             steps {
                 sh 'npm install netlify-cli --save-dev'
-                sh 'node node_modules/netlify-cli/bin/run.js deploy --prod --site $NETLIFY_SITE_NAME'
+                sh 'node node_modules/netlify-cli/bin/run.js deploy --prod --site $NETLIFY_SITE_NAME --dir dist'
             }
         }
         stage('Docker Build & Push') {
